@@ -8,6 +8,11 @@ from datetime import date
 from prophet import Prophet
 from prophet.plot import plot_plotly
 import numpy as np
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+if not hasattr(np, 'float'):
+    np.float = np.float64
 
 
 
