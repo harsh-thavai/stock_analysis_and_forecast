@@ -4,5 +4,4 @@ numpy
 yfinance
 plotly
 stocknews
-fbprophet
-
+prophet
