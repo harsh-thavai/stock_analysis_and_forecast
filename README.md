@@ -3,6 +3,8 @@
 ## Project Overview
 This project is an interactive web application for stock analysis and forecasting. It allows users to input a stock ticker and date range, then provides detailed analysis including price movements, key metrics, future price predictions, and relevant news.
 
+demo link https://youtu.be/kM8hfslRvrA?si=3rQYhb26EgRt-EYQ
+
 ## Features
 - Stock price visualization with candlestick charts
 - Calculation and display of key financial metrics
