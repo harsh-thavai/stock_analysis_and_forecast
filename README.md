@@ -1,12 +1,11 @@
 # Stock Analysis and Forecast
-![b3f6ffc214886e86d998b5e6b1305f5f33cd34ffd22f520cec471fcd](https://github.com/harsh-thavai/stock_analysis_and_forecast/assets/114677475/cd44aa6c-b51e-4db6-9b8f-4342027260da)
-![newplot (1)](https://github.com/harsh-thavai/stock_analysis_and_forecast/assets/114677475/d9285254-3435-4fe5-9c7d-d9d485d36ac5)
-
 
 ## Project Overview
 This project is an interactive web application for stock analysis and forecasting. It allows users to input a stock ticker and date range, then provides detailed analysis including price movements, key metrics, future price predictions, and relevant news.
 
 demo link https://youtu.be/kM8hfslRvrA?si=3rQYhb26EgRt-EYQ
+![b3f6ffc214886e86d998b5e6b1305f5f33cd34ffd22f520cec471fcd](https://github.com/harsh-thavai/stock_analysis_and_forecast/assets/114677475/cd44aa6c-b51e-4db6-9b8f-4342027260da)
+![newplot (1)](https://github.com/harsh-thavai/stock_analysis_and_forecast/assets/114677475/d9285254-3435-4fe5-9c7d-d9d485d36ac5)
 
 ## Features
 - Stock price visualization with candlestick charts
