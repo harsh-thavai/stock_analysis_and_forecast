@@ -1,6 +1,6 @@
 streamlit
 pandas
-numpy>=2.0
+numpy==1.24.3
 yfinance
 plotly
 stocknews
