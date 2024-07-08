@@ -1,13 +1,16 @@
 # Import necessary libraries
 import streamlit as st
 import pandas as pd
-import numpy as np
 import yfinance as yf
 import plotly.graph_objects as go
 from stocknews import StockNews
 from datetime import date
 from prophet import Prophet
 from prophet.plot import plot_plotly
+import numpy as np
+if not hasattr(np, 'float'):
+    np.float = np.float64
+
 
 def add_metrics_to_df(df):
     """
