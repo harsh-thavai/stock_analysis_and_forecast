@@ -3,5 +3,7 @@ pandas
 numpy
 yfinance
 plotly
-stocknews
 prophet
+textblob
+ta
+warnings
