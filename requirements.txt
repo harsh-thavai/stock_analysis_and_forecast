@@ -1,4 +1,4 @@
-streamlit==1.22.0 --pre
+streamlit==1.22.0 --hash
 pandas==1.5.3
 numpy==1.23.5
 yfinance==0.2.18
