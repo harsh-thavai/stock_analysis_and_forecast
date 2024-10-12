@@ -1,200 +1,250 @@
-# Import necessary libraries
 import streamlit as st
 import pandas as pd
+import numpy as np
 import yfinance as yf
 import plotly.graph_objects as go
-from stocknews import StockNews
-from datetime import date
+import plotly.express as px
+from plotly.subplots import make_subplots
+from datetime import date, timedelta
 from prophet import Prophet
 from prophet.plot import plot_plotly
-import numpy as np
+from textblob import TextBlob
+import ta
 import warnings
 
+warnings.filterwarnings('ignore')
 
+# Function to calculate Garman-Klass Volatility
+def garman_klass_volatility(data, window=30):
+    log_hl = (data['High'] / data['Low']).apply(np.log)
+    log_co = (data['Close'] / data['Open']).apply(np.log)
+    
+    rs = 0.5 * log_hl**2 - (2*np.log(2)-1) * log_co**2
+    
+    return np.sqrt(rs.rolling(window=window).mean() * 252)
 
-
-def add_metrics_to_df(df):
-    """
-    Calculate and add financial metrics to the dataframe.
-    
-    Args:
-    df (pd.DataFrame): Input dataframe with stock price data.
-    
-    Returns:
-    tuple: Updated dataframe and a dictionary of calculated metrics.
-    """
-    # Calculate daily return
-    df['daily_return'] = (df['Adj Close'] / df['Adj Close'].shift(1)) - 1
-    
-    # Calculate cumulative return
+# Function to add metrics and technical indicators to dataframe
+def add_metrics_and_indicators(df):
+    df['daily_return'] = df['Adj Close'].pct_change()
     df['cumulative_return'] = (1 + df['daily_return']).cumprod() - 1
     
-    # Calculate financial metrics
-    trading_days = 252  # Approximate number of trading days in a year
+    # Add technical indicators
+    df['SMA_20'] = ta.trend.sma_indicator(df['Close'], window=20)
+    df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
+    df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
+    df['MACD'] = ta.trend.macd_diff(df['Close'])
+    df['BB_high'] = ta.volatility.bollinger_hband(df['Close'])
+    df['BB_low'] = ta.volatility.bollinger_lband(df['Close'])
     
+    # Add Garman-Klass Volatility
+    df['GK_Volatility'] = garman_klass_volatility(df)
+    
+    trading_days = 252
     total_return = df['cumulative_return'].iloc[-1]
     annual_return = (1 + total_return) ** (trading_days / len(df)) - 1
-    
     daily_std = df['daily_return'].std()
     annual_std = daily_std * np.sqrt(trading_days)
-    
-    sharpe_ratio = (annual_return - 0.02) / annual_std  # Assuming 2% risk-free rate
-    
-    metrics = {
+    sharpe_ratio = (annual_return - 0.02) / annual_std
+
+    return df, {
         'Total Return': total_return,
         'Annual Return': annual_return,
         'Annual Std Dev': annual_std,
         'Sharpe Ratio': sharpe_ratio
     }
-    
-    return df, metrics
 
-# Set up Streamlit dashboard
-st.title('Stock ANALYSIS AND FORECAST')
+# Function for forecasting using Prophet
+@st.cache_resource
+def prophet_forecast(data, periods):
+    df = data.reset_index()[['Date', 'Close']]
+    df.columns = ['ds', 'y']
+    model = Prophet(daily_seasonality=True, weekly_seasonality=True, yearly_seasonality=True)
+    model.fit(df)
+    future = model.make_future_dataframe(periods=periods)
+    forecast = model.predict(future)
+    return model, forecast
+
+# Function for sentiment analysis
+def analyze_sentiment(text):
+    return TextBlob(text).sentiment.polarity
+
+# Streamlit app
+st.set_page_config(layout="wide")
+st.title('📈 Advanced Stock Analysis and Forecast Dashboard')
 
 # Sidebar for user input
-st.sidebar.header('User Input')
-ticker = st.sidebar.text_input('Ticker')
-start_date = st.sidebar.date_input('Start Date')
-end_date = st.sidebar.date_input('End Date')
+st.sidebar.header('📊 User Input')
+ticker = st.sidebar.text_input('Ticker Symbol', 'AAPL')
+start_date = st.sidebar.date_input('Start Date', date.today() - timedelta(days=365*5))  # 5 years of data
+end_date = st.sidebar.date_input('End Date', date.today())
 
 if ticker:
     try:
-        # Fetch stock data
-        data = yf.download(ticker, start=start_date, end=end_date)
-                
+        @st.cache_data
+        def load_data(ticker, start, end):
+            return yf.download(ticker, start=start, end=end)
+
+        data = load_data(ticker, start_date, end_date)
+
         if not data.empty:
-            # Add metrics to the dataframe
-            data, metrics = add_metrics_to_df(data)
-            
-            # Create candlestick chart
-            fig = go.Figure(data=[go.Candlestick(x=data.index,
-                open=data['Open'],
-                high=data['High'],
-                low=data['Low'],
-                close=data['Close'])])
-            fig.update_layout(title=f"{ticker} Stock Price", xaxis_rangeslider_visible=False)
-            st.plotly_chart(fig)
+            data, metrics = add_metrics_and_indicators(data)
 
-            # Create tabs for different analyses
-            pricing_data, metrics_tab, prediction, news = st.tabs(["Pricing Data", "Metrics", "Prediction", "TOP NEWS"])
+            # Main content
+            st.subheader(f"{ticker} Stock Overview")
+            col1, col2, col3, col4 = st.columns(4)
+            for i, (metric, value) in enumerate(metrics.items()):
+                globals()[f'col{i+1}'].metric(metric, f"{value:.2%}", delta_color="normal")
 
-            with pricing_data:
-                st.header('Price Movements')
-                
-                def color_negative_red(val):
-                    """Color negative values red and positive values green."""
-                    color = 'red' if val < 0 else 'green'
-                    return f'color: {color}'
-                
-                # Display styled dataframe
-                styled_data = data.style.applymap(color_negative_red, subset=['daily_return', 'cumulative_return'])
-                st.dataframe(styled_data)
-                
-                # Plot daily returns
-                fig_returns = go.Figure()
-                fig_returns.add_trace(go.Bar(
-                    x=data.index, 
-                    y=data['daily_return'],
-                    name='Daily Returns',
-                    marker_color=['red' if ret < 0 else 'green' for ret in data['daily_return']]
-                ))
-                fig_returns.update_layout(title=f"{ticker} Daily Returns", xaxis_title='Date', yaxis_title='Return')
-                st.plotly_chart(fig_returns)
-                
-                # Plot cumulative returns
-                fig_cum_returns = go.Figure()
-                fig_cum_returns.add_trace(go.Scatter(x=data.index, y=data['cumulative_return'], mode='lines', name='Cumulative Returns'))
-                fig_cum_returns.update_layout(title=f"{ticker} Cumulative Returns", xaxis_title='Date', yaxis_title='Cumulative Return')
-                st.plotly_chart(fig_cum_returns)
+            # Tabs for different analyses
+            tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Price & Volume", "📈 Technical Indicators", "📉 Returns Analysis", "🔮 Forecast", "📰 Market Sentiment"])
 
-            with metrics_tab:
-                st.header('Key Metrics')
-                # Display calculated metrics
-                for metric, value in metrics.items():
-                    st.metric(metric, f"{value:.2%}")
-            
-            with prediction:
-                st.header('Prediction')
-                
-                # Set default dates for prediction
-                START = "2015-01-01"
-                TODAY = date.today().strftime("%Y-%m-%d")
-                
-                # Allow user to select prediction timeframe
-                n_years = st.slider('Years of prediction:', 1, 4)
-                period = n_years * 365
+            with tab1:
+                st.subheader(f"{ticker} Stock Price and Volume")
+                fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
+                                    vertical_spacing=0.03, row_heights=[0.7, 0.3])
 
+                fig.add_trace(go.Candlestick(x=data.index, open=data['Open'], high=data['High'],
+                                             low=data['Low'], close=data['Close'], name="OHLC"),
+                              row=1, col=1)
+
+                fig.add_trace(go.Bar(x=data.index, y=data['Volume'], name="Volume", marker_color='rgba(0, 0, 255, 0.5)'),
+                              row=2, col=1)
+
+                fig.update_layout(height=600, title_text="Candlestick Chart with Volume", showlegend=False)
+                fig.update_xaxes(title_text="Date", row=2, col=1)
+                fig.update_yaxes(title_text="Price", row=1, col=1)
+                fig.update_yaxes(title_text="Volume", row=2, col=1)
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Add data table
+                st.subheader("Recent Data")
+                st.dataframe(data.tail(10).style.highlight_max(axis=0))
+
+            with tab2:
+                st.subheader('Technical Indicators')
+                fig = make_subplots(rows=4, cols=1, shared_xaxes=True, 
+                                    vertical_spacing=0.05, row_heights=[0.4, 0.2, 0.2, 0.2])
+
+                fig.add_trace(go.Scatter(x=data.index, y=data['Close'], name='Close Price', line=dict(color='blue')), row=1, col=1)
+                fig.add_trace(go.Scatter(x=data.index, y=data['SMA_20'], name='SMA 20', line=dict(color='orange')), row=1, col=1)
+                fig.add_trace(go.Scatter(x=data.index, y=data['SMA_50'], name='SMA 50', line=dict(color='red')), row=1, col=1)
+                fig.add_trace(go.Scatter(x=data.index, y=data['BB_high'], name='BB High', line=dict(color='green', dash='dash')), row=1, col=1)
+                fig.add_trace(go.Scatter(x=data.index, y=data['BB_low'], name='BB Low', line=dict(color='green', dash='dash')), row=1, col=1)
+
+                fig.add_trace(go.Bar(x=data.index, y=data['MACD'], name='MACD', marker_color='purple'), row=2, col=1)
+
+                fig.add_trace(go.Scatter(x=data.index, y=data['RSI'], name='RSI', line=dict(color='teal')), row=3, col=1)
+                fig.add_hline(y=70, line_dash="dash", line_color="red", row=3, col=1)
+                fig.add_hline(y=30, line_dash="dash", line_color="green", row=3, col=1)
+
+                fig.add_trace(go.Scatter(x=data.index, y=data['GK_Volatility'], name='GK Volatility', line=dict(color='orange')), row=4, col=1)
+
+                fig.update_layout(height=1000, title_text="Technical Indicators", showlegend=True)
+                fig.update_xaxes(title_text="Date", row=4, col=1)
+                fig.update_yaxes(title_text="Price", row=1, col=1)
+                fig.update_yaxes(title_text="MACD", row=2, col=1)
+                fig.update_yaxes(title_text="RSI", row=3, col=1)
+                fig.update_yaxes(title_text="GK Volatility", row=4, col=1)
+                st.plotly_chart(fig, use_container_width=True)
+
+            with tab3:
+                st.subheader('Returns Analysis')
+                fig_returns = make_subplots(rows=2, cols=1, shared_xaxes=True, 
+                                            vertical_spacing=0.03, subplot_titles=('Daily Returns', 'Cumulative Returns'))
+
+                fig_returns.add_trace(go.Bar(x=data.index, y=data['daily_return'], 
+                                             marker_color=np.where(data['daily_return'] < 0, 'red', 'green'),
+                                             name='Daily Returns'), row=1, col=1)
+
+                fig_returns.add_trace(go.Scatter(x=data.index, y=data['cumulative_return'], 
+                                                 line=dict(color='blue', width=2),
+                                                 name='Cumulative Returns'), row=2, col=1)
+
+                fig_returns.update_layout(height=500, title_text="Returns Analysis", showlegend=True)
+                fig_returns.update_xaxes(title_text="Date", row=2, col=1)
+                fig_returns.update_yaxes(title_text="Daily Return", row=1, col=1)
+                fig_returns.update_yaxes(title_text="Cumulative Return", row=2, col=1)
+                st.plotly_chart(fig_returns, use_container_width=True)
+
+                # Correlation heatmap
+                st.subheader('Correlation Heatmap')
+                corr_matrix = data[['Open', 'High', 'Low', 'Close', 'Volume', 'SMA_20', 'SMA_50', 'RSI', 'MACD', 'GK_Volatility']].corr()
+                fig_corr = px.imshow(corr_matrix, text_auto=True, aspect="auto", color_continuous_scale='RdBu_r')
+                fig_corr.update_layout(title_text="Correlation Heatmap")
+                st.plotly_chart(fig_corr, use_container_width=True)
+
+            with tab4:
+                st.subheader('Prophet Forecast')
+                forecast_days = st.slider('Forecast Days', 30, 1825, 365)  # Up to 5 years forecast
+                
+                with st.spinner('Generating forecast...'):
+                    model, forecast = prophet_forecast(data, forecast_days)
+                
+                fig_forecast = plot_plotly(model, forecast)
+                fig_forecast.update_layout(title_text="Prophet Price Forecast", xaxis_title="Date", yaxis_title="Price")
+                st.plotly_chart(fig_forecast, use_container_width=True)
+
+                # Add forecast evaluation metrics
+                last_price = data['Close'].iloc[-1]
+                forecast_price = forecast.iloc[-1]['yhat']
+                forecast_change = (forecast_price - last_price) / last_price
+                st.metric("Forecasted Price Change", f"{forecast_change:.2%}", 
+                          delta=f"{forecast_price:.2f}", delta_color="normal")
+
+                # Show forecast components
+                st.subheader("Forecast Components")
+                fig_components = model.plot_components(forecast)
+                st.pyplot(fig_components)
+
+            with tab5:
+                st.subheader('Market Sentiment Analysis')
+                
                 @st.cache_data
-                def load_data(ticker):
-                    """Load and cache stock data."""
-                    data = yf.download(ticker, START, TODAY)
-                    data.reset_index(inplace=True)
-                    return data
+                def get_news(ticker):
+                    stock = yf.Ticker(ticker)
+                    return stock.news
 
-                # Load data for prediction
-                data_load_state = st.text('Loading data...')
-                data = load_data(ticker)
-                data_load_state.text('Loading data... done!')
+                news = get_news(ticker)
+                sentiments = []
+                for article in news[:5]:  # Display top 5 news articles
+                    title = article['title']
+                    sentiment = analyze_sentiment(title)
+                    sentiments.append(sentiment)
+                    sentiment_color = 'green' if sentiment > 0 else 'red' if sentiment < 0 else 'gray'
+                    st.markdown(f"**{title}**")
+                    st.markdown(f"Sentiment: <span style='color:{sentiment_color}'>{sentiment:.2f}</span>", unsafe_allow_html=True)
+                    st.write(f"Published: {pd.to_datetime(article['providerPublishTime'], unit='s')}")
+                    st.write(article['link'])
+                    st.markdown("---")
 
-                # Display raw data
-                st.subheader('Raw data')
-                st.write(data.tail())
-
-                def plot_raw_data():
-                    """Plot raw stock price data."""
-                    fig = go.Figure()
-                    fig.add_trace(go.Scatter(x=data['Date'], y=data['Open'], name="stock_open"))
-                    fig.add_trace(go.Scatter(x=data['Date'], y=data['Close'], name="stock_close"))
-                    fig.layout.update(title_text='Time Series data with Rangeslider', xaxis_rangeslider_visible=True)
-                    st.plotly_chart(fig)
-
-                plot_raw_data()
-
-                # Predict forecast with Prophet
-                df_train = data[['Date','Close']]
-                df_train = df_train.rename(columns={"Date": "ds", "Close": "y"})
-                m = Prophet()
-                m.fit(df_train)
-                future = m.make_future_dataframe(periods=period)
-                forecast = m.predict(future)
-
-                # Show and plot forecast
-                st.subheader('Forecast data')
-                st.write(forecast.tail())
-                
-                st.write(f'Forecast plot for {n_years} years')
-                fig1 = plot_plotly(m, forecast)
-                st.plotly_chart(fig1)
-
-                st.write("Forecast components")
-                fig2 = m.plot_components(forecast)
-                st.pyplot(fig2)
-
-            with news:
-                st.header('TOP NEWS')
-                
-                # Fetch news using stocknews
-                sn = StockNews(ticker, save_news=False)
-                df_news = sn.read_rss()
-                
-                # Display top 10 news items
-                for i in range(min(10, len(df_news))):
-                    st.subheader(f"News {i+1}")
-                    st.write(f"Published Date: {df_news['published'][i]}")
-                    st.write(f"Title: {df_news['title'][i]}")
-                    
-                    if 'summary' in df_news.columns:
-                        st.write(f"Summary: {df_news['summary'][i]}")
-                    elif 'text' in df_news.columns:
-                        st.write(f"Text: {df_news['text'][i][:500]}...")  # Display first 500 characters
-                    
-                    st.write("---")
+                # Overall sentiment analysis
+                overall_sentiment = np.mean(sentiments)
+                st.subheader('Overall Market Sentiment')
+                fig_sentiment = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = overall_sentiment,
+                    domain = {'x': [0, 1], 'y': [0, 1]},
+                    title = {'text': "Sentiment", 'font': {'size': 24}},
+                    gauge = {
+                        'axis': {'range': [-1, 1], 'tickwidth': 1, 'tickcolor': "darkblue"},
+                        'bar': {'color': "darkblue"},
+                        'bgcolor': "white",
+                        'borderwidth': 2,
+                        'bordercolor': "gray",
+                        'steps': [
+                            {'range': [-1, -0.5], 'color': 'red'},
+                            {'range': [-0.5, 0.5], 'color': 'gray'},
+                            {'range': [0.5, 1], 'color': 'green'}],
+                        'threshold': {
+                            'line': {'color': "red", 'width': 4},
+                            'thickness': 0.75,
+                            'value': overall_sentiment}}))
+                fig_sentiment.update_layout(height=300)
+                st.plotly_chart(fig_sentiment, use_container_width=True)
 
         else:
             st.error("No data available for the selected ticker and date range.")
     except Exception as e:
-        st.error(f"An error occurred: {e}")
-        st.error(f"Error details: {str(e)}")
+        st.error(f"An error occurred: {str(e)}")
 else:
     st.info("Please enter a ticker symbol to start.")
