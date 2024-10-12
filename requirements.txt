@@ -1,9 +1,12 @@
 streamlit==1.22.0
 pandas==1.5.3
-numpy==1.24.3
+numpy==1.23.5
 yfinance==0.2.18
 plotly==5.14.1
 prophet==1.1.2
 textblob==0.17.1
 ta==0.10.2
 scikit-learn==1.2.2
+distutils
+pip==24.2
+
