@@ -1,83 +1,124 @@
-# Stock Analysis and Forecast
+# Advanced Stock Analysis and Forecast Dashboard
 
-## Project Overview
-This project is an interactive web application for stock analysis and forecasting. It allows users to input a stock ticker and date range, then provides detailed analysis including price movements, key metrics, future price predictions, and relevant news.
+## 📊 Overview
 
-demo link https://youtu.be/kM8hfslRvrA?si=3rQYhb26EgRt-EYQ
+This project is an advanced stock analysis and forecast dashboard built with Streamlit, offering a comprehensive suite of tools for in-depth stock market analysis. It provides real-time data visualization, technical indicators, returns analysis, price forecasting, and market sentiment analysis, all in one interactive web application.
 
-![b3f6ffc214886e86d998b5e6b1305f5f33cd34ffd22f520cec471fcd](https://github.com/harsh-thavai/stock_analysis_and_forecast/assets/114677475/cd44aa6c-b51e-4db6-9b8f-4342027260da)
-![newplot (1)](https://github.com/harsh-thavai/stock_analysis_and_forecast/assets/114677475/d9285254-3435-4fe5-9c7d-d9d485d36ac5)
+![newplot(1)](https://github.com/user-attachments/assets/5d2089f8-4ff1-4fb2-a2e4-61b22a7dba50)
 
-## Features
-- Stock price visualization with candlestick charts
-- Calculation and display of key financial metrics
-- Price prediction using Facebook's Prophet model
-- Display of top news related to the selected stock
-- Interactive UI built with Streamlit
 
-## Technologies Used
-- Python 3.8+
-- Streamlit for the web interface
-- yfinance for fetching stock data
-- Pandas and NumPy for data manipulation
-- Plotly for interactive charts
-- Facebook Prophet for time series forecasting
-- StockNews for fetching stock-related news
+## 🌟 Features
 
-## Installation & Usage
+- **Real-time Stock Data**: Fetch and display up-to-date stock information using yfinance.
+- **Interactive Visualizations**: Utilize Plotly for creating dynamic and interactive charts.
+- **Technical Analysis**: Implement various technical indicators including SMA, RSI, MACD, and Bollinger Bands.
+- **Advanced Metrics**: Calculate and display key financial metrics such as Sharpe Ratio and Garman-Klass Volatility.
+- **Returns Analysis**: Visualize daily and cumulative returns with interactive charts.
+- **Price Forecasting**: Implement Facebook Prophet for time series forecasting of stock prices.
+- **Sentiment Analysis**: Analyze market sentiment using latest news articles related to the stock.
+- **User-friendly Interface**: Easy-to-use Streamlit interface with multiple tabs for different analyses.
+
+
+
+## 🛠️ Technologies Used
+
+- Python
+- Streamlit
+- Pandas
+- NumPy
+- yfinance
+- Plotly
+- Facebook Prophet
+- TextBlob
+- TA-Lib
+
+## 📋 Prerequisites
+
+Before you begin, ensure you have met the following requirements:
+
+- Python 3.7+
+- pip package manager
+
+## 🚀 Installation and Setup
 
 1. Clone the repository:
-```git clone https://github.com/harsh-thavai/stock_analysis_and_forecast.git```
-2. Install the required packages:
-```pip install -r requirements.txt```
-3. Run the Streamlit app:
-```streamlit run app.py```
-4. Open a web browser and go to
-```http://localhost:8501```
-5. Enter a stock ticker (e.g., AAPL for Apple Inc.) and select a date range
-6. Explore the various tabs for different analyses and visualizations
+   ```
+   git clone [https://github.com/yourusername/stock-analysis-dashboard.git](https://github.com/harsh-thavai/stock_analysis_and_forecast.git)
+   cd stock-analysis-dashboard
+   ```
 
-## Detailed Component Descriptions
+2. Create a virtual environment (optional but recommended):
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   ```
 
-### Data Fetching and Processing
-- Stock data is fetched using the `yfinance` library
-- Additional metrics like daily returns and cumulative returns are calculated
+3. Install the required packages:
+   ```
+   pip install -r requirements.txt
+   ```
 
-### Visualization
-- Interactive candlestick charts for stock prices
-- Bar charts for daily returns
-- Line charts for cumulative returns
+4. Run the Streamlit app:
+   ```
+   streamlit run app.py
+   ```
 
-### Metrics Calculation
-- Total Return
-- Annual Return
-- Annual Standard Deviation
-- Sharpe Ratio
+5. Open your web browser and navigate to `http://localhost:8501` to view the dashboard.
 
-### Price Prediction
-- Utilizes Facebook's Prophet model for time series forecasting
-- Allows user to select prediction timeframe (1-4 years)
-- Displays forecast plot and forecast components
+## 🖥️ Usage
 
-### News Integration
-- Fetches top news related to the selected stock using the `stocknews` library
+1. Enter a stock ticker symbol in the sidebar (e.g., AAPL for Apple Inc.).
+2. Select the date range for analysis.
+3. Explore different tabs for various analyses:
+   - Price & Volume: View candlestick chart and volume data.
+   - Technical Indicators: Analyze SMA, RSI, MACD, and Bollinger Bands.
+   - Returns Analysis: Examine daily and cumulative returns.
+   - Forecast: View price predictions using Prophet.
+   - Market Sentiment: Analyze current market sentiment based on news.
 
-## Future Improvements
+## 📊 Dashboard Sections
 
-- [ ] Integrate with a database for data storage
-- [ ] Implement cloud deployment (e.g., AWS, Azure, GCP)
-- [ ] Add comprehensive logging using Python's logging library
-- [ ] Integrate with MLflow for experiment tracking and model versioning
-- [ ] Implement additional data sources and web scraping for more comprehensive analysis
-- [ ] Add unit and integration tests
-- [ ] Optimize model performance and code efficiency
+### 1. Stock Overview
+Displays key metrics including Total Return, Annual Return, Annual Standard Deviation, and Sharpe Ratio.
 
-## Contributing
-Contributions to this project are welcome! Please fork the repository and submit a pull request with your changes.
+### 2. Price & Volume
+- Interactive candlestick chart
+- Volume bar chart
+- Recent data table
 
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### 3. Technical Indicators
+- Simple Moving Averages (20 and 50 days)
+- Relative Strength Index (RSI)
+- Moving Average Convergence Divergence (MACD)
+- Bollinger Bands
+- Garman-Klass Volatility
 
-## Contact
-For any queries or suggestions, please open an issue on this GitHub repository.
-   
+### 4. Returns Analysis
+- Daily returns bar chart
+- Cumulative returns line chart
+- Correlation heatmap of various metrics
+
+### 5. Forecast
+- Prophet-based price forecast
+- Forecast components breakdown
+- Customizable forecast period
+
+### 6. Market Sentiment
+- Latest news articles related to the stock
+- Sentiment analysis of news headlines
+- Overall market sentiment gauge
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome! Feel free to check [issues page]([https://github.com/yourusername/stock-analysis-dashboard/issues](https://github.com/harsh-thavai/stock_analysis_and_forecast/issues)) if you want to contribute.
+
+## 📝 License
+
+This project is [MIT](https://choosealicense.com/licenses/mit/) licensed.
+
+## 👏 Acknowledgements
+
+- [Streamlit](https://streamlit.io/) for the amazing web app framework
+- [yfinance](https://github.com/ranaroussi/yfinance) for providing easy access to Yahoo Finance data
+- [Plotly](https://plotly.com/) for interactive plotting capabilities
+- [Facebook Prophet](https://facebook.github.io/prophet/) for time series forecasting
