@@ -201,19 +201,30 @@ def main():
                     st.pyplot(fig_components)
 
                 with tab5:
-                    st.subheader('Market Sentiment Analysis')
+                    st.subheader('Market Information')
                     
                     @st.cache_data(ttl=3600) 
-                    def get_news(ticker):
+                    def get_stock_info(ticker):
                         try:
                             stock = yf.Ticker(ticker)
-                            return stock.news
+                            info = stock.info
+                            news = stock.news
+                            return info, news
                         except Exception as e:
-                            st.error(f"Error fetching news: {str(e)}")
-                            return []
+                            st.error(f"Error fetching stock information: {str(e)}")
+                            return None, None
 
-                    news = get_news(ticker)
+                    info, news = get_stock_info(ticker)
+                    
+                    if info:
+                        st.subheader('Company Information')
+                        st.write(f"Sector: {info.get('sector', 'N/A')}")
+                        st.write(f"Industry: {info.get('industry', 'N/A')}")
+                        st.write(f"Website: {info.get('website', 'N/A')}")
+                        st.write(f"Business Summary: {info.get('longBusinessSummary', 'N/A')}")
+
                     if news:
+                        st.subheader('Recent News and Sentiment Analysis')
                         sentiments = []
                         for article in news[:5]:  # Display top 5 news articles
                             try:
@@ -259,8 +270,8 @@ def main():
                     else:
                         st.warning("No news articles found for this stock.")
 
-            else:
-                st.error("No data available for the selected ticker and date range.")
+                    if not info and not news:
+                        st.error("Unable to fetch stock information and news. The service might be temporarily unavailable or there might be an issue with the data provider.")
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
             st.error("If the error persists, please check your input and try again.")
