@@ -247,11 +247,7 @@ def main():
                             'value': overall_sentiment}}))
                 fig_sentiment.update_layout(height=300)
                 st.plotly_chart(fig_sentiment, use_container_width=True)
-                else:
-                    st.warning("No news articles found for this stock.")
-        except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
-            st.error("If the error persists, please check your input and try again.")
+                
     else:
         st.info("Please enter a ticker symbol to start.")
 
