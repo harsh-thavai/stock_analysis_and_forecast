@@ -11,8 +11,7 @@ from prophet.plot import plot_plotly
 from textblob import TextBlob
 import ta
 import warnings
-import requests
-from bs4 import BeautifulSoup
+from stocknews import StockNews
 
 
 warnings.filterwarnings('ignore')
@@ -209,46 +208,25 @@ def main():
                     @st.cache_data(ttl=3600) 
                     def get_news(ticker):
                         try:
-                            stock = yf.Ticker(ticker)
-                            news = stock.news
-                            if not news:
-                                raise ValueError("No news found from yfinance")
-                            return news
+                            sn = StockNews(ticker, save_news=False)
+                            return sn.read_rss()
                         except Exception as e:
-                            st.warning(f"Couldn't fetch news from yfinance: {str(e)}. Trying alternative source...")
-                            return get_news_alternative(ticker)
-
-                    def get_news_alternative(ticker):
-                        url = f"https://finance.yahoo.com/quote/{ticker}"
-                        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
-                        soup = BeautifulSoup(response.text, 'html.parser')
-                        news_items = soup.find_all('li', class_='js-stream-content')
-                        
-                        news = []
-                        for item in news_items[:5]:  # Limit to 5 news items
-                            title_elem = item.find('h3')
-                            link_elem = item.find('a', class_='js-content-viewer')
-                            if title_elem and link_elem:
-                                news.append({
-                                    'title': title_elem.text,
-                                    'link': 'https://finance.yahoo.com' + link_elem['href']
-                                })
-                        return news
+                            st.error(f"Error fetching news: {str(e)}")
+                            return []
 
                     news = get_news(ticker)
-                    if news:
+                    if not news.empty:
                         sentiments = []
-                        for article in news[:5]:  # Display top 5 news articles
+                        for _, article in news.iterrows():
                             try:
-                                title = article.get('title', 'No title available')
+                                title = article['title']
                                 sentiment = analyze_sentiment(title)
                                 sentiments.append(sentiment)
                                 sentiment_color = 'green' if sentiment > 0 else 'red' if sentiment < 0 else 'gray'
                                 st.markdown(f"**{title}**")
                                 st.markdown(f"Sentiment: <span style='color:{sentiment_color}'>{sentiment:.2f}</span>", unsafe_allow_html=True)
-                                if 'providerPublishTime' in article:
-                                    st.write(f"Published: {pd.to_datetime(article['providerPublishTime'], unit='s')}")
-                                st.write(article.get('link', 'No link available'))
+                                st.write(f"Published: {article['published']}")
+                                st.write(article['link'])
                                 st.markdown("---")
                             except Exception as e:
                                 st.error(f"Error processing news article: {str(e)}")
