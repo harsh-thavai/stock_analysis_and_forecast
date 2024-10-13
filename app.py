@@ -11,6 +11,7 @@ from prophet.plot import plot_plotly
 from textblob import TextBlob
 import ta
 import warnings
+import json
 
 warnings.filterwarnings('ignore')
 
@@ -69,35 +70,42 @@ def analyze_sentiment(text):
     return TextBlob(text).sentiment.polarity
 
 # Streamlit app
-if __name__ == "__main__":
+def main():
     st.set_page_config(layout="wide")
     st.title('📈 Advanced Stock Analysis and Forecast Dashboard')
 
-# Sidebar for user input
-st.sidebar.header('📊 User Input')
-ticker = st.sidebar.text_input('Ticker Symbol', 'AAPL')
-start_date = st.sidebar.date_input('Start Date', date.today() - timedelta(days=365*5))  # 5 years of data
-end_date = st.sidebar.date_input('End Date', date.today())
+    # Add GitHub and LinkedIn links
+    st.markdown("""
+    Created by Harsh Thavai | 
+    [GitHub](https://github.com/harsh-thavai) | 
+    [LinkedIn](https://www.linkedin.com/in/harsh-thavai/)
+    """)
 
-if ticker:
-    try:
-        @st.cache_data(ttl=3600) 
-        def load_data(ticker, start, end):
-            return yf.download(ticker, start=start, end=end)
+    # Sidebar for user input
+    st.sidebar.header('📊 User Input')
+    ticker = st.sidebar.text_input('Ticker Symbol', 'AAPL')
+    start_date = st.sidebar.date_input('Start Date', date.today() - timedelta(days=365*5))  # 5 years of data
+    end_date = st.sidebar.date_input('End Date', date.today())
 
-        data = load_data(ticker, start_date, end_date)
+    if ticker:
+        try:
+            @st.cache_data(ttl=3600)
+            def load_data(ticker, start, end):
+                return yf.download(ticker, start=start, end=end)
 
-        if not data.empty:
-            data, metrics = add_metrics_and_indicators(data)
+            data = load_data(ticker, start_date, end_date)
 
-            # Main content
-            st.subheader(f"{ticker} Stock Overview")
-            col1, col2, col3, col4 = st.columns(4)
-            for i, (metric, value) in enumerate(metrics.items()):
-                globals()[f'col{i+1}'].metric(metric, f"{value:.2%}", delta_color="normal")
+            if not data.empty:
+                data, metrics = add_metrics_and_indicators(data)
 
-            # Tabs for different analyses
-            tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Price & Volume", "📈 Technical Indicators", "📉 Returns Analysis", "🔮 Forecast", "📰 Market Sentiment"])
+                # Main content
+                st.subheader(f"{ticker} Stock Overview")
+                col1, col2, col3, col4 = st.columns(4)
+                for i, (metric, value) in enumerate(metrics.items()):
+                    globals()[f'col{i+1}'].metric(metric, f"{value:.2%}", delta_color="normal")
+
+                # Tabs for different analyses
+                tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Price & Volume", "📈 Technical Indicators", "📉 Returns Analysis", "🔮 Forecast", "📰 Market Sentiment"])
 
             with tab1:
                 st.subheader(f"{ticker} Stock Price and Volume")
@@ -244,8 +252,12 @@ if ticker:
                 st.plotly_chart(fig_sentiment, use_container_width=True)
 
         else:
-            st.error("No data available for the selected ticker and date range.")
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
-else:
-    st.info("Please enter a ticker symbol to start.")
+                st.error("No data available for the selected ticker and date range.")
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+            st.error("If the error persists, please check your input and try again.")
+    else:
+        st.info("Please enter a ticker symbol to start.")
+
+if __name__ == "__main__":
+    main()
