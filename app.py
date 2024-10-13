@@ -99,9 +99,10 @@ def main():
                 # Main content
                 st.subheader(f"{ticker} Stock Overview")
                 col1, col2, col3, col4 = st.columns(4)
+                cols = [col1, col2, col3, col4]
                 for i, (metric, value) in enumerate(metrics.items()):
-                    globals()[f'col{i+1}'].metric(metric, f"{value:.2%}", delta_color="normal")
-
+                    cols[i].metric(metric, f"{value:.2%}", delta_color="normal")
+                    
                 # Tabs for different analyses
                 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Price & Volume", "📈 Technical Indicators", "📉 Returns Analysis", "🔮 Forecast", "📰 Market Sentiment"])
 
