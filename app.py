@@ -11,7 +11,6 @@ from prophet.plot import plot_plotly
 from textblob import TextBlob
 import ta
 import warnings
-import json
 
 warnings.filterwarnings('ignore')
 
@@ -77,7 +76,6 @@ def main():
     # Add GitHub and LinkedIn links
     st.markdown("""
     Created by Harsh Thavai | 
-    [GitHub](https://github.com/harsh-thavai) | 
     [LinkedIn](https://www.linkedin.com/in/harsh-thavai/)
     """)
 
@@ -108,7 +106,7 @@ def main():
                 tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Price & Volume", "📈 Technical Indicators", "📉 Returns Analysis", "🔮 Forecast", "📰 Market Sentiment"])
 
             with tab1:
-                st.subheader(f"{ticker} Stock Price and Volume")
+                    st.subheader(f"{ticker} Stock Price and Volume")
                 fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
                                     vertical_spacing=0.03, row_heights=[0.7, 0.3])
 
@@ -130,7 +128,7 @@ def main():
                 st.dataframe(data.tail(10).style.highlight_max(axis=0))
 
             with tab2:
-                st.subheader('Technical Indicators')
+                    st.subheader('Technical Indicators')
                 fig = make_subplots(rows=4, cols=1, shared_xaxes=True, 
                                     vertical_spacing=0.05, row_heights=[0.4, 0.2, 0.2, 0.2])
 
@@ -157,7 +155,7 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
 
             with tab3:
-                st.subheader('Returns Analysis')
+                    st.subheader('Returns Analysis')
                 fig_returns = make_subplots(rows=2, cols=1, shared_xaxes=True, 
                                             vertical_spacing=0.03, subplot_titles=('Daily Returns', 'Cumulative Returns'))
 
@@ -183,7 +181,7 @@ def main():
                 st.plotly_chart(fig_corr, use_container_width=True)
 
             with tab4:
-                st.subheader('Prophet Forecast')
+                    st.subheader('Prophet Forecast')
                 forecast_days = st.slider('Forecast Days', 30, 1825, 365)  # Up to 5 years forecast
                 
                 with st.spinner('Generating forecast...'):
@@ -206,7 +204,7 @@ def main():
                 st.pyplot(fig_components)
 
             with tab5:
-                st.subheader('Market Sentiment Analysis')
+                    st.subheader('Market Sentiment Analysis')
                 
                 @st.cache_data(ttl=3600) 
                 def get_news(ticker):
@@ -258,6 +256,3 @@ def main():
             st.error("If the error persists, please check your input and try again.")
     else:
         st.info("Please enter a ticker symbol to start.")
-
-if __name__ == "__main__":
-    main()
