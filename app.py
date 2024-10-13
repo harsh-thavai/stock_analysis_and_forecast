@@ -107,15 +107,11 @@ def main():
 
             with tab1:
                     st.subheader(f"{ticker} Stock Price and Volume")
-                fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
-                                    vertical_spacing=0.03, row_heights=[0.7, 0.3])
+                fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.7, 0.3])
 
-                fig.add_trace(go.Candlestick(x=data.index, open=data['Open'], high=data['High'],
-                                             low=data['Low'], close=data['Close'], name="OHLC"),
-                              row=1, col=1)
+                fig.add_trace(go.Candlestick(x=data.index, open=data['Open'], high=data['High'], low=data['Low'], close=data['Close'], name="OHLC"), row=1, col=1)
 
-                fig.add_trace(go.Bar(x=data.index, y=data['Volume'], name="Volume", marker_color='rgba(0, 0, 255, 0.5)'),
-                              row=2, col=1)
+                fig.add_trace(go.Bar(x=data.index, y=data['Volume'], name="Volume", marker_color='rgba(0, 0, 255, 0.5)'), row=2, col=1)
 
                 fig.update_layout(height=600, title_text="Candlestick Chart with Volume", showlegend=False)
                 fig.update_xaxes(title_text="Date", row=2, col=1)
