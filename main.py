@@ -203,7 +203,7 @@ def main():
                     st.pyplot(fig_components)
 
                 with tab5:
-                st.subheader('Market Sentiment Analysis')
+                    st.subheader('Market Sentiment Analysis')
                 
                 @st.cache_data
                 def get_news(ticker):
