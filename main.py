@@ -203,61 +203,50 @@ def main():
                     st.pyplot(fig_components)
 
                 with tab5:
-                    st.subheader('Market Sentiment Analysis')
-                    
-                    @st.cache_data(ttl=3600) 
-                    def get_news(ticker):
-                        try:
-                            sn = StockNews(ticker, save_news=False)
-                            return sn.read_rss()
-                        except Exception as e:
-                            st.error(f"Error fetching news: {str(e)}")
-                            return []
+                st.subheader('Market Sentiment Analysis')
+                
+                @st.cache_data
+                def get_news(ticker):
+                    stock = yf.Ticker(ticker)
+                    return stock.news
 
-                    news = get_news(ticker)
-                    if not news.empty:
-                        sentiments = []
-                        for _, article in news.iterrows():
-                            try:
-                                title = article['title']
-                                sentiment = analyze_sentiment(title)
-                                sentiments.append(sentiment)
-                                sentiment_color = 'green' if sentiment > 0 else 'red' if sentiment < 0 else 'gray'
-                                st.markdown(f"**{title}**")
-                                st.markdown(f"Sentiment: <span style='color:{sentiment_color}'>{sentiment:.2f}</span>", unsafe_allow_html=True)
-                                st.write(f"Published: {article['published']}")
-                                st.write(article['link'])
-                                st.markdown("---")
-                            except Exception as e:
-                                st.error(f"Error processing news article: {str(e)}")
+                news = get_news(ticker)
+                sentiments = []
+                for article in news[:5]:  # Display top 5 news articles
+                    title = article['title']
+                    sentiment = analyze_sentiment(title)
+                    sentiments.append(sentiment)
+                    sentiment_color = 'green' if sentiment > 0 else 'red' if sentiment < 0 else 'gray'
+                    st.markdown(f"**{title}**")
+                    st.markdown(f"Sentiment: <span style='color:{sentiment_color}'>{sentiment:.2f}</span>", unsafe_allow_html=True)
+                    st.write(f"Published: {pd.to_datetime(article['providerPublishTime'], unit='s')}")
+                    st.write(article['link'])
+                    st.markdown("---")
 
-                        if sentiments:
-                            # Overall sentiment analysis
-                            overall_sentiment = np.mean(sentiments)
-                            st.subheader('Overall Market Sentiment')
-                            fig_sentiment = go.Figure(go.Indicator(
-                                mode = "gauge+number",
-                                value = overall_sentiment,
-                                domain = {'x': [0, 1], 'y': [0, 1]},
-                                title = {'text': "Sentiment", 'font': {'size': 24}},
-                                gauge = {
-                                    'axis': {'range': [-1, 1], 'tickwidth': 1, 'tickcolor': "darkblue"},
-                                    'bar': {'color': "darkblue"},
-                                    'bgcolor': "white",
-                                    'borderwidth': 2,
-                                    'bordercolor': "gray",
-                                    'steps': [
-                                        {'range': [-1, -0.5], 'color': 'red'},
-                                        {'range': [-0.5, 0.5], 'color': 'gray'},
-                                        {'range': [0.5, 1], 'color': 'green'}],
-                                    'threshold': {
-                                        'line': {'color': "red", 'width': 4},
-                                        'thickness': 0.75,
-                                        'value': overall_sentiment}}))
-                            fig_sentiment.update_layout(height=300)
-                            st.plotly_chart(fig_sentiment, use_container_width=True)
-                        else:
-                            st.warning("No sentiment data available.")
+                # Overall sentiment analysis
+                overall_sentiment = np.mean(sentiments)
+                st.subheader('Overall Market Sentiment')
+                fig_sentiment = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = overall_sentiment,
+                    domain = {'x': [0, 1], 'y': [0, 1]},
+                    title = {'text': "Sentiment", 'font': {'size': 24}},
+                    gauge = {
+                        'axis': {'range': [-1, 1], 'tickwidth': 1, 'tickcolor': "darkblue"},
+                        'bar': {'color': "darkblue"},
+                        'bgcolor': "white",
+                        'borderwidth': 2,
+                        'bordercolor': "gray",
+                        'steps': [
+                            {'range': [-1, -0.5], 'color': 'red'},
+                            {'range': [-0.5, 0.5], 'color': 'gray'},
+                            {'range': [0.5, 1], 'color': 'green'}],
+                        'threshold': {
+                            'line': {'color': "red", 'width': 4},
+                            'thickness': 0.75,
+                            'value': overall_sentiment}}))
+                fig_sentiment.update_layout(height=300)
+                st.plotly_chart(fig_sentiment, use_container_width=True)
                     else:
                         st.warning("No news articles found for this stock.")
         except Exception as e:
