@@ -43,7 +43,7 @@ Before you begin, ensure you have met the following requirements:
 
 1. Clone the repository:
    ```
-   git clone [https://github.com/yourusername/stock-analysis-dashboard.git](https://github.com/harsh-thavai/stock_analysis_and_forecast.git)
+   git clone [https://github.com/harsh-thavai/stock-analysis-dashboard.git](https://github.com/harsh-thavai/stock_analysis_and_forecast.git)
    cd stock-analysis-dashboard
    ```
 
