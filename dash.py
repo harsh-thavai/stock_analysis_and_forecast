@@ -11,9 +11,6 @@ from prophet.plot import plot_plotly
 from textblob import TextBlob
 import ta
 import warnings
-import requests
-import io
-import time
 
 warnings.filterwarnings('ignore')
 
@@ -28,7 +25,7 @@ def garman_klass_volatility(data, window=30):
 
 # Function to add metrics and technical indicators to dataframe
 def add_metrics_and_indicators(df):
-    # Use Close instead of Adj Close for calculations
+    # Use 'Close' instead of 'Adj Close' as it now contains adjusted prices
     df['daily_return'] = df['Close'].pct_change()
     df['cumulative_return'] = (1 + df['daily_return']).cumprod() - 1
     
@@ -57,48 +54,6 @@ def add_metrics_and_indicators(df):
         'Sharpe Ratio': sharpe_ratio
     }
 
-# Function for fetching data with multiple retry attempts and alternative sources
-@st.cache_data(ttl=3600)
-def load_data_with_retries(ticker, start_date, end_date, max_retries=3):
-    for attempt in range(max_retries):
-        try:
-            # Try with standard yfinance download
-            data = yf.download(ticker, start=start_date, end=end_date, progress=False)
-            if not data.empty:
-                return data, "yfinance"
-            time.sleep(1)  # Wait before retry
-        except Exception as e:
-            st.warning(f"Attempt {attempt+1}/{max_retries} failed: {str(e)}")
-            time.sleep(2)  # Wait longer between retries
-    
-    # Try alternative approach directly using yfinance Ticker object
-    try:
-        ticker_obj = yf.Ticker(ticker)
-        data = ticker_obj.history(start=start_date, end=end_date)
-        if not data.empty:
-            return data, "yfinance_ticker"
-    except Exception as e:
-        st.warning(f"Alternative approach failed: {str(e)}")
-    
-    # Try with alpha vantage demo API if available
-    try:
-        # This uses Alpha Vantage's demo API key - for production, users should get their own
-        alpha_vantage_url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey=demo&outputsize=full&datatype=csv"
-        response = requests.get(alpha_vantage_url)
-        if response.status_code == 200:
-            data = pd.read_csv(io.StringIO(response.text), index_col=0, parse_dates=True)
-            # Rename columns to match yfinance format
-            data.columns = ["Open", "High", "Low", "Close", "Volume"]
-            # Filter to desired date range
-            data = data.loc[start_date:end_date]
-            if not data.empty:
-                return data, "alpha_vantage"
-    except Exception as e:
-        st.warning(f"Alpha Vantage approach failed: {str(e)}")
-    
-    # If all methods fail, return empty DataFrame
-    return pd.DataFrame(), "none"
-
 # Function for forecasting using Prophet
 @st.cache_resource(ttl=3600)
 def prophet_forecast(data, periods):
@@ -119,7 +74,6 @@ def main():
     st.set_page_config(layout="wide")
     st.title('📈 Advanced Stock Analysis and Forecast Dashboard')
 
-    # Add GitHub and LinkedIn links
     st.markdown("""
     Created by Harsh Thavai | 
     [LinkedIn](https://www.linkedin.com/in/harsh-thavai/)
@@ -127,48 +81,33 @@ def main():
 
     # Sidebar for user input
     st.sidebar.header('📊 User Input')
-    ticker = st.sidebar.text_input('Ticker Symbol', 'AAPL')
-    start_date = st.sidebar.date_input('Start Date', date.today() - timedelta(days=365*5))  # 5 years of data
+    ticker = st.sidebar.text_input('Ticker Symbol', 'AAPL').strip().upper()
+    start_date = st.sidebar.date_input('Start Date', date.today() - timedelta(days=365*5))
     end_date = st.sidebar.date_input('End Date', date.today())
-    
-    # Add data source selector
-    data_source = st.sidebar.radio(
-        "Choose primary data source (if available)",
-        ["Auto (try multiple sources)", "Yahoo Finance", "Alpha Vantage Demo"]
-    )
+
+    if start_date > date.today() or end_date > date.today():
+        st.error("Error: Selected dates cannot be in the future")
+        st.stop()
 
     if ticker:
         try:
-            with st.spinner('Loading stock data... This may take a moment.'):
-                if data_source == "Auto (try multiple sources)":
-                    data, source_used = load_data_with_retries(ticker, start_date, end_date)
-                elif data_source == "Yahoo Finance":
-                    data = yf.download(ticker, start=start_date, end=end_date, progress=False)
-                    source_used = "yfinance"
-                else:  # Alpha Vantage
-                    alpha_vantage_url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey=demo&outputsize=full&datatype=csv"
-                    response = requests.get(alpha_vantage_url)
-                    if response.status_code == 200:
-                        data = pd.read_csv(io.StringIO(response.text), index_col=0, parse_dates=True)
-                        # Rename columns to match yfinance format
-                        data.columns = ["Open", "High", "Low", "Close", "Volume"]
-                        # Filter to desired date range
-                        data = data.loc[start_date:end_date]
-                        source_used = "alpha_vantage"
-                    else:
-                        data = pd.DataFrame()
-                        source_used = "none"
+            @st.cache_data(ttl=3600)
+            def load_data(ticker, start, end):
+                # Add auto_adjust=True to get adjusted prices in 'Close' column
+                data = yf.download(
+                    ticker, 
+                    start=start, 
+                    end=end, 
+                    auto_adjust=True,  # Key change here
+                    progress=False
+                )
+                if data.empty:
+                    st.error("No data found for this ticker symbol")
+                return data
+
+            data = load_data(ticker, start_date, end_date)
 
             if not data.empty:
-                # Display data source information
-                st.success(f"Data successfully loaded from {source_used}. Total records: {len(data)}")
-                
-                # Check if data was downloaded successfully and has required columns
-                required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-                if not all(col in data.columns for col in required_cols):
-                    st.error(f"Missing required columns in data. Available columns: {data.columns.tolist()}")
-                    return
-                
                 data, metrics = add_metrics_and_indicators(data)
 
                 # Main content
@@ -278,30 +217,16 @@ def main():
                 with tab5:
                     st.subheader('Market Sentiment Analysis')
                     
-                    # Use a more reliable method for news
-                    news_method = st.radio("News Source", ["Yahoo Finance (may be unstable)", "Mock Data (for testing)"])
-                    
-                    if news_method == "Yahoo Finance (may be unstable)":
-                        @st.cache_data(ttl=3600) 
-                        def get_news(ticker):
-                            try:
-                                stock = yf.Ticker(ticker)
-                                return stock.news
-                            except Exception as e:
-                                st.error(f"Error fetching news: {str(e)}")
-                                return []
-                        
-                        news = get_news(ticker)
-                    else:
-                        # Use mock data for testing when Yahoo Finance API is down
-                        news = [
-                            {"title": f"{ticker} Reports Strong Q1 Earnings", "providerPublishTime": int(time.time()) - 86400, "link": "https://example.com/news1"},
-                            {"title": f"Analysts Upgrade {ticker} to Buy", "providerPublishTime": int(time.time()) - 172800, "link": "https://example.com/news2"},
-                            {"title": f"{ticker} Announces New Product Launch", "providerPublishTime": int(time.time()) - 259200, "link": "https://example.com/news3"},
-                            {"title": f"Market Uncertainty Impacts {ticker}", "providerPublishTime": int(time.time()) - 345600, "link": "https://example.com/news4"},
-                            {"title": f"{ticker} Expands into New Markets", "providerPublishTime": int(time.time()) - 432000, "link": "https://example.com/news5"}
-                        ]
-                    
+                    @st.cache_data(ttl=3600) 
+                    def get_news(ticker):
+                        try:
+                            stock = yf.Ticker(ticker)
+                            return stock.news
+                        except Exception as e:
+                            st.error(f"Error fetching news: {str(e)}")
+                            return []
+
+                    news = get_news(ticker)
                     if news:
                         sentiments = []
                         for article in news[:5]:  # Display top 5 news articles
@@ -347,49 +272,9 @@ def main():
                             st.warning("No sentiment data available.")
                     else:
                         st.warning("No news articles found for this stock.")
-            else:
-                st.error(f"No data found for ticker {ticker}. Please check the symbol and try again.")
-                
-                # Show troubleshooting information
-                with st.expander("Troubleshooting", expanded=True):
-                    st.markdown("""
-                    ### Troubleshooting Tips:
-                    
-                    1. **Check the ticker symbol** - Make sure you're using the correct ticker symbol. Some stocks might have different symbols on different exchanges.
-                    
-                    2. **Try a different data source** - Use the radio button in the sidebar to switch between data sources.
-                    
-                    3. **Try a popular stock** - Test with a well-known stock like 'MSFT' (Microsoft) or 'GOOGL' (Google) to see if the data source is working.
-                    
-                    4. **Reduce the date range** - Try a shorter time period by adjusting the start and end dates.
-                    
-                    5. **Check for API changes** - The Yahoo Finance API might have changed. This often happens with free financial APIs.
-                    
-                    6. **Common ticker symbols:**
-                       - AAPL (Apple)
-                       - MSFT (Microsoft)
-                       - GOOGL (Google)
-                       - AMZN (Amazon)
-                       - META (Meta/Facebook)
-                       - TSLA (Tesla)
-                       - JPM (JPMorgan Chase)
-                       - V (Visa)
-                    """)
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
             st.error("If the error persists, please check your input and try again.")
-            
-            # Debug information
-            st.expander("Debug Information", expanded=False).write(f"""
-            Error details: {str(e)}
-            
-            Troubleshooting tips:
-            1. Make sure the ticker symbol is valid
-            2. Check your internet connection
-            3. Verify that the date range is valid
-            4. If yfinance API has changed, you may need to update the library: `pip install yfinance --upgrade`
-            5. Try using a different data source from the sidebar
-            """)
     else:
         st.info("Please enter a ticker symbol to start.")
 
