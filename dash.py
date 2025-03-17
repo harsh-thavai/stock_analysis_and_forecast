@@ -25,7 +25,8 @@ def garman_klass_volatility(data, window=30):
 
 # Function to add metrics and technical indicators to dataframe
 def add_metrics_and_indicators(df):
-    df['daily_return'] = df['Adj Close'].pct_change()
+    # Use Close instead of Adj Close for calculations
+    df['daily_return'] = df['Close'].pct_change()
     df['cumulative_return'] = (1 + df['daily_return']).cumprod() - 1
     
     # Add technical indicators
@@ -89,11 +90,18 @@ def main():
         try:
             @st.cache_data(ttl=3600)
             def load_data(ticker, start, end):
+                # Download all available data without filtering to specific columns
                 return yf.download(ticker, start=start, end=end)
 
             data = load_data(ticker, start_date, end_date)
 
             if not data.empty:
+                # Check if data was downloaded successfully and has required columns
+                required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+                if not all(col in data.columns for col in required_cols):
+                    st.error(f"Missing required columns in data. Available columns: {data.columns.tolist()}")
+                    return
+                
                 data, metrics = add_metrics_and_indicators(data)
 
                 # Main content
@@ -247,6 +255,7 @@ def main():
                                     'steps': [
                                         {'range': [-1, -0.5], 'color': 'red'},
                                         {'range': [-0.5, 0.5], 'color': 'gray'},
+                                        {'range': [-0.5, 0.5], 'color': 'gray'},
                                         {'range': [0.5, 1], 'color': 'green'}],
                                     'threshold': {
                                         'line': {'color': "red", 'width': 4},
@@ -258,9 +267,22 @@ def main():
                             st.warning("No sentiment data available.")
                     else:
                         st.warning("No news articles found for this stock.")
+            else:
+                st.error(f"No data found for ticker {ticker}. Please check the symbol and try again.")
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
             st.error("If the error persists, please check your input and try again.")
+            
+            # Debug information
+            st.expander("Debug Information", expanded=False).write(f"""
+            Error details: {str(e)}
+            
+            Troubleshooting tips:
+            1. Make sure the ticker symbol is valid
+            2. Check your internet connection
+            3. Verify that the date range is valid
+            4. If yfinance API has changed, you may need to update the library: `pip install yfinance --upgrade`
+            """)
     else:
         st.info("Please enter a ticker symbol to start.")
 
