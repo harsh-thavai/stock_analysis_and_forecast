@@ -89,7 +89,7 @@ def main():
         try:
             @st.cache_data(ttl=3600)
             def load_data(ticker, start, end):
-                return yf.download(ticker, start=start, end=end, auto_adjust=False)
+                return yf.download(ticker, start=start, end=end, multi_level_index=False, auto_adjust=False)
 
             data = load_data(ticker, start_date, end_date)
 
