@@ -139,6 +139,16 @@ def analyze_sentiment(text):
         st.error(f"Error in sentiment analysis: {str(e)}")
         return 0
 
+def test_yfinance_connection():
+    """Test if yfinance is working properly"""
+    try:
+        # Test with a simple ticker
+        test_ticker = yf.Ticker('AAPL')
+        test_data = test_ticker.history(period='5d')
+        return not test_data.empty, test_data
+    except Exception as e:
+        return False, str(e)
+
 # Streamlit app
 def main():
     st.set_page_config(page_title="Stock Analysis Dashboard", layout="wide")
@@ -149,12 +159,37 @@ def main():
     Created by Harsh Thavai | 
     [LinkedIn](https://www.linkedin.com/in/harsh-thavai/)
     """)
+    
+    # Test yfinance connection on startup
+    with st.spinner('Testing connection to Yahoo Finance...'):
+        connection_ok, test_result = test_yfinance_connection()
+        if connection_ok:
+            st.success("✅ Successfully connected to Yahoo Finance!")
+        else:
+            st.error(f"❌ Cannot connect to Yahoo Finance: {test_result}")
+            st.error("Please check your internet connection and try again.")
+            return
 
     # Sidebar for user input
     st.sidebar.header('📊 User Input')
-    ticker = st.sidebar.text_input('Ticker Symbol', 'AAPL').upper()
-    start_date = st.sidebar.date_input('Start Date', date.today() - timedelta(days=365*2))  # 2 years default
+    
+    # Add some example tickers
+    st.sidebar.write("**Popular tickers:** AAPL, GOOGL, MSFT, TSLA, AMZN, NVDA")
+    
+    ticker = st.sidebar.text_input('Ticker Symbol', 'AAPL').upper().strip()
+    start_date = st.sidebar.date_input('Start Date', date.today() - timedelta(days=365))  # 1 year default
     end_date = st.sidebar.date_input('End Date', date.today())
+    
+    # Add a test connection button
+    if st.sidebar.button('Test Connection'):
+        try:
+            test_ticker = yf.Ticker('AAPL')
+            test_info = test_ticker.info
+            st.sidebar.success("✅ Connection to Yahoo Finance is working!")
+            st.sidebar.write(f"Test result: {test_info.get('longName', 'Apple Inc.')}")
+        except Exception as e:
+            st.sidebar.error(f"❌ Connection failed: {str(e)}")
+            st.sidebar.error("Try refreshing the page or checking your internet connection")
 
     # Validate dates
     if start_date >= end_date:
@@ -166,10 +201,39 @@ def main():
             @st.cache_data(ttl=3600)
             def load_data(ticker, start, end):
                 try:
-                    data = yf.download(ticker, start=start, end=end, progress=False)
+                    # Try different approaches to download data
+                    st.info(f"Attempting to download data for {ticker}...")
+                    
+                    # Method 1: Standard download
+                    data = yf.download(ticker, start=start, end=end, progress=False, show_errors=False)
+                    
+                    if data.empty:
+                        st.info("Trying alternative download method...")
+                        # Method 2: Using Ticker object
+                        ticker_obj = yf.Ticker(ticker)
+                        data = ticker_obj.history(start=start, end=end)
+                    
+                    if data.empty:
+                        st.info("Trying with different date range...")
+                        # Method 3: Try with a shorter date range
+                        recent_start = end - timedelta(days=365)
+                        data = yf.download(ticker, start=recent_start, end=end, progress=False, show_errors=False)
+                    
+                    if not data.empty:
+                        st.success(f"Successfully downloaded {len(data)} days of data for {ticker}")
+                        # Print data info for debugging
+                        st.write(f"Data range: {data.index.min()} to {data.index.max()}")
+                        st.write(f"Columns: {list(data.columns)}")
+                    
                     return data
+                    
                 except Exception as e:
                     st.error(f"Error downloading data for {ticker}: {str(e)}")
+                    st.error("Possible solutions:")
+                    st.error("1. Check if the ticker symbol is correct")
+                    st.error("2. Try a different date range")
+                    st.error("3. Check your internet connection")
+                    st.error("4. Yahoo Finance might be temporarily unavailable")
                     return pd.DataFrame()
 
             with st.spinner(f'Loading data for {ticker}...'):
